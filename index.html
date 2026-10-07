@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Naitik's Self-Awareness Quest - GLS1O</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            pixel: ['"Press Start 2P"', 'monospace'],
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+          },
+          colors: {
+            arcade: {
+              950: '#030712', 900: '#0b1329', 800: '#111e38', 700: '#182d53',
+              600: '#1e3a8a', blue: '#3b82f6', cyan: '#06b6d4', neon: '#38bdf8',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    .pixel-box { border: 4px solid #38bdf8; box-shadow: 6px 6px 0px #0b1329; }
+    .pixel-button { box-shadow: 0px 5px 0px #0369a1; transition: all 0.1s ease; }
+    .pixel-button:active { transform: translateY(4px); box-shadow: 0px 1px 0px #0369a1; }
+    .pixel-button:disabled { cursor: default; }
+    .bg-grid {
+      background-size: 32px 32px;
+      background-image:
+        linear-gradient(to right, rgba(56, 189, 248, 0.07) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(56, 189, 248, 0.07) 1px, transparent 1px);
+    }
+    button:focus-visible { outline: 3px solid #fbbf24; outline-offset: 2px; }
+
+    @keyframes shake {
+      0%, 100% { transform: translate(0, 0); }
+      20% { transform: translate(-10px, 6px); }
+      40% { transform: translate(10px, -6px); }
+      60% { transform: translate(-8px, -4px); }
+      80% { transform: translate(8px, 5px); }
+    }
+    .screen-shake { animation: shake 0.4s ease-in-out; }
+    @keyframes flashWhite { 0% { opacity: 0.85; background-color: white; } 100% { opacity: 0; } }
+    @keyframes flashRed { 0% { opacity: 0.85; background-color: #ef4444; } 100% { opacity: 0; } }
+    .flash-overlay-white { animation: flashWhite 0.35s ease-out forwards; }
+    .flash-overlay-red { animation: flashRed 0.45s ease-out forwards; }
+
+    /* ===== RUBRIC ===== */
+    .rub-wrap { overflow-x: auto; }
+    .rub-table { min-width: 860px; width: 100%; border-collapse: collapse; font-size: 11px; color: #cbd5e1; }
+    .rub-table th, .rub-table td { border: 2px solid #1e3a8a; vertical-align: top; }
+    .rub-table th { background: #111e38; color: #fff; padding: 8px; font-size: 11px; }
+    .rub-head-exceeds { color: #6ee7b7 !important; }
+    .rub-head-meets { color: #7dd3fc !important; }
+    .rub-head-prog { color: #fcd34d !important; }
+    .rub-head-not { color: #fca5a5 !important; }
+    .rub-crit { background: #0b1329; padding: 10px; width: 16%; color: #fff; }
+    .rub-crit span { display: block; color: #cbd5e1; margin-top: 6px; font-weight: 400; }
+    .rub-cell { padding: 10px; background: #030712; }
+    .rub-cell p + p { margin-top: 10px; }
+    .rub-cell.hl { background: rgba(56, 189, 248, 0.22); box-shadow: inset 0 0 0 2px #38bdf8; color: #fff; }
+
+    .lvl-cell { text-align: center; padding: 0; background: #0b1329; }
+    .lvl-btn {
+      width: 100%; height: 100%; min-height: 44px; padding: 6px 4px;
+      font-weight: 800; font-size: 11px; line-height: 1.2; color: #cbd5e1;
+      background: transparent; border: 0; cursor: default;
+    }
+    .lvl-btn small { display: block; font-weight: 600; font-size: 9px; }
+    .lvl-btn.picked { background: #38bdf8; color: #030712; box-shadow: 0 0 12px #38bdf8; }
+
+    @media (prefers-reduced-motion: reduce) {
+      .screen-shake, .flash-overlay-white, .flash-overlay-red, .animate-pulse, .animate-bounce { animation: none !important; }
+      html { scroll-behavior: auto; }
+    }
+  </style>
+</head>
+<body class="bg-arcade-950 text-slate-100 font-sans min-h-screen flex flex-col antialiased bg-grid relative overflow-x-hidden">
+
+  <div id="flash-screen" class="fixed inset-0 pointer-events-none z-50 opacity-0"></div>
+
+  <!-- HUD HEADER -->
+  <header class="bg-arcade-900 border-b-4 border-arcade-cyan px-4 py-3 sticky top-0 z-40 shadow-xl">
+    <div class="max-w-6xl mx-auto flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 bg-arcade-cyan text-arcade-950 font-pixel text-xs flex items-center justify-center font-bold">NV</div>
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="font-pixel text-[10px] text-arcade-neon uppercase">HERO</span>
+            <span class="text-xs bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded font-bold border border-emerald-500/30">LVL <span id="hud-level">1</span></span>
+          </div>
+          <h1 class="text-xs sm:text-sm font-bold font-pixel text-white tracking-wide">NAITIK B. VERMA</h1>
+        </div>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-3 sm:gap-6">
+        <div class="w-32 sm:w-48">
+          <div class="flex justify-between text-[10px] font-pixel text-slate-300 mb-1">
+            <span>XP PROGRESS</span>
+            <span id="xp-text" class="text-arcade-cyan">0%</span>
+          </div>
+          <div class="w-full bg-arcade-950 h-3 border-2 border-arcade-cyan p-0.5">
+            <div id="xp-bar" class="bg-gradient-to-r from-arcade-cyan to-arcade-neon h-full transition-all duration-300" style="width: 0%"></div>
+          </div>
+        </div>
+
+        <button onclick="openSelfEvalModal()" class="px-3 py-1.5 bg-sky-600 hover:bg-sky-500 text-white font-pixel text-[10px] pixel-button flex items-center gap-2">
+          <i class="fa-solid fa-clipboard-list"></i> RUBRIC
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main id="game-main" class="flex-1 max-w-5xl w-full mx-auto px-4 py-6 sm:py-8 flex flex-col justify-center">
+
+    <!-- SCREEN 1: START -->
+    <section id="screen-start" class="space-y-6">
+      <div class="text-center space-y-3">
+        <span class="font-pixel text-xs text-arcade-cyan tracking-widest uppercase animate-pulse">*** PRESS START TO BEGIN ***</span>
+        <h1 class="text-2xl sm:text-4xl font-extrabold font-pixel text-transparent bg-clip-text bg-gradient-to-r from-arcade-neon via-sky-300 to-cyan-400 leading-relaxed">
+          NAITIK'S SELF-AWARENESS QUEST
+        </h1>
+        <p class="text-sm sm:text-base text-slate-300 max-w-2xl mx-auto font-medium">
+          Welcome to my GLS1O Unit 1 interactive Self-Awareness RPG style game! Level up my learning skills and defeat the <strong class="text-red-400">Procrastination Overlord</strong> in the BOSS ARENA!
+        </p>
+      </div>
+
+      <div class="bg-arcade-900 pixel-box p-6 sm:p-8 space-y-6">
+        <div class="flex items-center gap-3 border-b-2 border-arcade-700 pb-4">
+          <i class="fa-solid fa-gamepad text-arcade-cyan text-2xl"></i>
+          <div>
+            <h2 class="font-pixel text-sm sm:text-base text-white">QUEST ROADMAP & RULES</h2>
+            <p class="text-xs text-slate-400 mt-0.5">Watch out! Wrong answers trigger screen penalty glitches and boss counterattacks (-35 HP)!</p>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+          <div class="p-3 bg-arcade-800 border border-arcade-700 rounded space-y-1">
+            <span class="font-pixel text-arcade-neon text-[9px] block">STAGE 1</span>
+            <h3 class="font-bold text-white text-xs">Learning Style</h3>
+            <p class="text-slate-300 text-[11px]">Auditory & Kinesthetic strategy test.</p>
+          </div>
+          <div class="p-3 bg-arcade-800 border border-arcade-700 rounded space-y-1">
+            <span class="font-pixel text-arcade-neon text-[9px] block">STAGE 2</span>
+            <h3 class="font-bold text-white text-xs">Intelligences</h3>
+            <p class="text-slate-300 text-[11px]">Equip Body Smart (59%) & Sound Smart (53%).</p>
+          </div>
+          <div class="p-3 bg-arcade-800 border border-arcade-700 rounded space-y-1">
+            <span class="font-pixel text-arcade-neon text-[9px] block">STAGE 3</span>
+            <h3 class="font-bold text-white text-xs">Problem Solving</h3>
+            <p class="text-slate-300 text-[11px]">3 scenario questions: Calm & Resourceful tactics.</p>
+          </div>
+          <div class="p-3 bg-arcade-800 border border-red-500/80 rounded space-y-1">
+            <span class="font-pixel text-red-400 text-[9px] block">BOSS ARENA</span>
+            <h3 class="font-bold text-white text-xs">Overlord Battle</h3>
+            <p class="text-slate-300 text-[11px]">Needs 4 hits to defeat boss! (-35 HP counterattacks!)</p>
+          </div>
+        </div>
+
+        <div class="p-4 bg-arcade-950 border-2 border-arcade-cyan rounded flex flex-wrap sm:flex-nowrap items-center justify-between gap-4">
+          <div class="flex items-center gap-3">
+            <div class="w-12 h-12 bg-arcade-blue rounded flex items-center justify-center text-2xl text-white font-pixel shrink-0">
+              <i class="fa-solid fa-user-ninja"></i>
+            </div>
+            <div>
+              <span class="font-pixel text-[10px] text-slate-400">HERO PROFILE</span>
+              <h4 class="font-bold text-white text-sm">Characteristics: <span class="text-arcade-cyan">Corny, cheesy, funny, kinda kind</span></h4>
+              <p class="text-xs text-slate-300">Hobbies: <span>Soccer, Movies, Gaming (hence the RPG style game) Breaking Bad is peak</span></p>
+            </div>
+          </div>
+          <button onclick="startQuest();" class="w-full sm:w-auto px-6 py-3 bg-arcade-cyan hover:bg-sky-400 text-arcade-950 font-pixel text-xs pixel-button font-bold tracking-wider shrink-0">
+            START GAME <i class="fa-solid fa-play ml-2"></i>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- SCREEN 2: LEVEL 1 -->
+    <section id="screen-level1" class="hidden space-y-6">
+      <div class="flex justify-between items-center bg-arcade-900 p-4 border-2 border-arcade-cyan">
+        <span class="font-pixel text-xs text-arcade-neon">LEVEL 1: LEARNING STYLES</span>
+        <span class="font-pixel text-xs text-slate-300">AUDITORY + KINESTHETIC</span>
+      </div>
+
+      <div class="bg-arcade-900 pixel-box p-6 sm:p-8 space-y-6">
+        <div>
+          <h2 class="font-pixel text-lg text-white mb-2">STAGE 1: AUDITORY & KINESTHETIC QUIZ</h2>
+          <p class="text-xs sm:text-sm text-slate-300 leading-relaxed">
+            I got the exact same score for <strong>Auditory</strong> and <strong>Kinesthetic</strong> learning! That means I learn best when I'm moving or hearing things.
+            <br><span class="text-arcade-cyan font-bold">Question: How should Naitik study for a tough Grade 9 Math & Science test?</span>
+          </p>
+        </div>
+
+        <div id="l1-question-box" class="p-4 bg-arcade-800 border border-arcade-700 rounded space-y-3">
+          <span class="font-pixel text-[10px] text-arcade-neon block">SELECT THE CORRECT STRATEGY:</span>
+          <div class="grid grid-cols-1 gap-3 pt-2">
+            <button onclick="answerL1(false);" class="p-3.5 bg-arcade-950 hover:bg-red-950/60 border border-slate-700 hover:border-red-500 rounded text-left text-xs text-slate-300 transition-all">
+              A) Sit completely still for 4 hours, mute all audio, and stare silently at textbook pages without moving.
+            </button>
+            <button onclick="answerL1(false);" class="p-3.5 bg-arcade-950 hover:bg-red-950/60 border border-slate-700 hover:border-red-500 rounded text-left text-xs text-slate-300 transition-all">
+              B) Just re-copy the entire textbook onto random lined paper over and over in total silence.
+            </button>
+            <button onclick="answerL1(true);" class="p-3.5 bg-arcade-950 hover:bg-red-950/60 border border-slate-700 hover:border-red-500 rounded text-left text-xs text-slate-300 transition-all">
+              C) Read notes out loud to study, listen to recorded lessons, and use physical models or hands-on materials for problem solving.
+            </button>
+            <button onclick="answerL1(false);" class="p-3.5 bg-arcade-950 hover:bg-red-950/60 border border-slate-700 hover:border-red-500 rounded text-left text-xs text-slate-300 transition-all">
+              D) Wing the test without studying and just play soccer all night hoping muscle memory does math equations.
+            </button>
+          </div>
+        </div>
+
+        <div id="l1-error" class="hidden p-4 bg-red-950/90 border-2 border-red-500 rounded text-xs text-red-200 space-y-2">
+          <div class="font-pixel text-red-400 text-xs"><i class="fa-solid fa-triangle-exclamation"></i> WRONG STRATEGY! SYSTEM GLITCH PENALTY!</div>
+          <p>That option ignores Naitik's auditory and kinesthetic strengths! Staring at textbooks or winging it won't work!</p>
+          <button onclick="retryL1();" class="mt-1 px-4 py-2 bg-red-600 text-white font-pixel text-[10px] font-bold rounded pixel-button">
+            RETRY STAGE 1 <i class="fa-solid fa-rotate-left ml-1"></i>
+          </button>
+        </div>
+
+        <div id="l1-feedback" class="hidden p-4 bg-emerald-950/80 border border-emerald-500 rounded text-xs text-emerald-200 space-y-2">
+          <div class="font-pixel text-emerald-400 text-sm"><i class="fa-solid fa-circle-check"></i> CORRECT! +100 XP</div>
+          <p>Since I'm kinesthetic and auditory, reading out loud and using hands-on physical models activates my memory way better than sitting still!</p>
+          <button onclick="triggerWhiteFX(); nextToLevel2();" class="mt-2 px-4 py-2 bg-emerald-500 text-arcade-950 font-pixel text-[10px] font-bold rounded pixel-button">
+            PROCEED TO LEVEL 2 <i class="fa-solid fa-arrow-right ml-1"></i>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- SCREEN 3: LEVEL 2 -->
+    <section id="screen-level2" class="hidden space-y-6">
+      <div class="flex justify-between items-center bg-arcade-900 p-4 border-2 border-arcade-cyan">
+        <span class="font-pixel text-xs text-arcade-neon">LEVEL 2: INTELLIGENCE SKILL TREE</span>
+        <span class="font-pixel text-xs text-slate-300">POINTS REMAINING: <span id="skill-points">2</span></span>
+      </div>
+
+      <div class="bg-arcade-900 pixel-box p-6 sm:p-8 space-y-6">
+        <div>
+          <h2 class="font-pixel text-lg text-white mb-2">STAGE 2: UNLOCK HERO ABILITIES</h2>
+          <p class="text-xs sm:text-sm text-slate-300">Equip both of Naitik's highest quiz intelligences to prepare for the Boss Battle!</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div id="card-body" class="p-5 bg-arcade-800 border-2 border-slate-700 rounded space-y-3">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 bg-sky-600 rounded flex items-center justify-center text-white text-xl"><i class="fa-solid fa-futbol"></i></div>
+              <div>
+                <h3 class="font-bold text-white text-base">Body Smart</h3>
+                <span class="text-xs font-pixel text-arcade-neon">SCORE: 59%</span>
+              </div>
+            </div>
+            <p class="text-xs text-slate-300">High physical coordination! Applied in soccer, learning cooking recipes by muscle memory, and building physical science models.</p>
+            <button id="btn-unlock-body" onclick="unlockSkill('body');" class="w-full py-2.5 bg-arcade-cyan text-arcade-950 font-pixel text-[10px] font-bold pixel-button">EQUIP ABILITY</button>
+          </div>
+
+          <div id="card-sound" class="p-5 bg-arcade-800 border-2 border-slate-700 rounded space-y-3">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 bg-indigo-600 rounded flex items-center justify-center text-white text-xl"><i class="fa-solid fa-music"></i></div>
+              <div>
+                <h3 class="font-bold text-white text-base">Sound Smart</h3>
+                <span class="text-xs font-pixel text-indigo-300">SCORE: 53%</span>
+              </div>
+            </div>
+            <p class="text-xs text-slate-300">Rhythm and sound sensitivity! Applied when listening to recorded teacher lessons and reciting notes out loud.</p>
+            <button id="btn-unlock-sound" onclick="unlockSkill('sound');" class="w-full py-2.5 bg-arcade-cyan text-arcade-950 font-pixel text-[10px] font-bold pixel-button">EQUIP ABILITY</button>
+          </div>
+        </div>
+
+        <div id="l2-continue" class="hidden text-center pt-4">
+          <button onclick="triggerWhiteFX(); nextToLevel3();" class="px-6 py-3 bg-arcade-neon text-arcade-950 font-pixel text-xs font-bold pixel-button">
+            PROCEED TO LEVEL 3 <i class="fa-solid fa-arrow-right ml-2"></i>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- SCREEN 4: LEVEL 3 -->
+    <section id="screen-level3" class="hidden space-y-6">
+      <div class="flex justify-between items-center bg-arcade-900 p-4 border-2 border-arcade-cyan">
+        <span class="font-pixel text-xs text-arcade-neon">LEVEL 3: PROBLEM SOLVING</span>
+        <span id="l3-progress-text" class="font-pixel text-xs text-slate-300">QUESTION 1 OF 3</span>
+      </div>
+
+      <div class="bg-arcade-900 pixel-box p-6 sm:p-8 space-y-6">
+        <div>
+          <h2 class="font-pixel text-lg text-white mb-2">STAGE 3: TACTICAL STRENGTH CHALLENGE</h2>
+          <p class="text-xs sm:text-sm text-slate-300">Answer all scenario questions correctly to unlock Naitik's Calm & Resourceful superpowers before entering the Boss Arena!</p>
+        </div>
+
+        <div id="l3-q-container" class="space-y-4">
+          <div class="p-4 bg-arcade-800 border border-arcade-700 rounded space-y-2">
+            <span id="l3-q-num" class="font-pixel text-[10px] text-arcade-neon block">SCENARIO 1</span>
+            <p id="l3-q-text" class="text-sm font-semibold text-white">Scenario text loading...</p>
+          </div>
+          <div id="l3-options" class="grid grid-cols-1 gap-3"></div>
+        </div>
+
+        <div id="l3-error" class="hidden p-4 bg-red-950/90 border-2 border-red-500 rounded text-xs text-red-200 space-y-2">
+          <div class="font-pixel text-red-400 text-xs"><i class="fa-solid fa-triangle-exclamation"></i> INCORRECT STRATEGY! GLITCH PENALTY!</div>
+          <p>Naitik stays calm and resourceful under pressure! You must retry this scenario!</p>
+          <button onclick="retryL3();" class="mt-1 px-4 py-2 bg-red-600 text-white font-pixel text-[10px] font-bold rounded pixel-button">
+            RETRY SCENARIO <i class="fa-solid fa-rotate-left ml-1"></i>
+          </button>
+        </div>
+
+        <div id="l3-feedback" class="hidden p-4 bg-emerald-950/80 border border-emerald-500 rounded text-xs text-emerald-200 space-y-2">
+          <div class="font-pixel text-emerald-400 text-sm"><i class="fa-solid fa-shield-halved"></i> ALL STRENGTHS LOADED! BOSS ARENA UNLOCKED!</div>
+          <p>Naitik is now fully equipped with <strong>Calm & Collected</strong> and <strong>Resourceful</strong> tactics to face the Procrastination Overlord!</p>
+          <button onclick="triggerWhiteFX(); nextToBoss();" class="mt-2 px-5 py-2.5 bg-red-600 text-white font-pixel text-[10px] font-bold rounded pixel-button">
+            ENTER BOSS ARENA <i class="fa-solid fa-skull ml-1"></i>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- SCREEN 5: BOSS FIGHT -->
+    <section id="screen-boss" class="hidden space-y-6">
+      <div class="flex justify-between items-center bg-arcade-900 p-4 border-2 border-red-500">
+        <span class="font-pixel text-xs text-red-400 animate-pulse"><i class="fa-solid fa-skull mr-2"></i> FINAL STAGE: OVERLORD BATTLE</span>
+        <span class="font-pixel text-xs text-slate-300">4-HIT TURN COMBAT</span>
+      </div>
+
+      <div class="bg-arcade-900 pixel-box p-6 sm:p-8 space-y-6 border-red-500 relative overflow-hidden">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 bg-arcade-950 p-4 border border-arcade-700 rounded">
+          <div>
+            <div class="flex justify-between text-xs font-pixel mb-1">
+              <span class="text-arcade-cyan">NAITIK (HERO)</span>
+              <span id="hero-hp-text" class="text-emerald-400">100 / 100 HP</span>
+            </div>
+            <div class="w-full bg-slate-900 h-4 border border-arcade-cyan p-0.5">
+              <div id="hero-hp-bar" class="bg-emerald-500 h-full transition-all duration-300" style="width: 100%"></div>
+            </div>
+          </div>
+          <div>
+            <div class="flex justify-between text-xs font-pixel mb-1">
+              <span class="text-red-400">PROCRASTINATION OVERLORD</span>
+              <span id="boss-hp-text" class="text-red-400">100 / 100 HP</span>
+            </div>
+            <div class="w-full bg-slate-900 h-4 border border-red-500 p-0.5">
+              <div id="boss-hp-bar" class="bg-red-600 h-full transition-all duration-300" style="width: 100%"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="p-6 bg-gradient-to-b from-arcade-950 via-slate-900 to-arcade-950 border-2 border-arcade-700 rounded flex flex-col items-center justify-center text-center relative">
+          <div id="boss-sprite" class="text-6xl sm:text-7xl text-red-500 transition-transform duration-200"><i class="fa-solid fa-dragon"></i></div>
+          <h3 id="boss-name" class="font-pixel text-xs sm:text-sm text-red-400 mt-3">PROCRASTINATION OVERLORD</h3>
+          <p id="combat-log" class="text-xs text-amber-300 font-pixel mt-2 bg-black/60 px-3 py-1.5 rounded border border-amber-500/30 leading-relaxed">
+            The Overlord attacks with high school stress! You need 4 hits to defeat him!
+          </p>
+        </div>
+
+        <div id="boss-q-container" class="space-y-4">
+          <div class="p-4 bg-arcade-800 border border-arcade-700 rounded space-y-2">
+            <span id="boss-q-num" class="font-pixel text-[10px] text-arcade-neon block">ROUND 1 OF 4</span>
+            <p id="boss-q-text" class="text-sm font-semibold text-white">Question loading...</p>
+          </div>
+          <div id="boss-options" class="grid grid-cols-1 gap-3"></div>
+        </div>
+
+        <div id="boss-defeat-box" class="hidden text-center space-y-3 p-4 bg-red-950/90 border-2 border-red-500 rounded">
+          <h4 class="font-pixel text-sm text-red-400">GAME OVER! YOU WERE DEFEATED BY PROCRASTINATION!</h4>
+          <p class="text-xs text-slate-300">Counterattacks (-35 HP) drained all your health! You must retry the Boss Battle!</p>
+          <button onclick="retryBossBattle();" class="px-6 py-3 bg-red-600 hover:bg-red-500 text-white font-pixel text-xs font-bold pixel-button">
+            RETRY BOSS BATTLE <i class="fa-solid fa-rotate-left ml-2"></i>
+          </button>
+        </div>
+
+        <div id="boss-victory-box" class="hidden text-center pt-4">
+          <button onclick="triggerWhiteFX(); showVictoryScreen();" class="px-6 py-3 bg-amber-400 hover:bg-amber-300 text-arcade-950 font-pixel text-xs font-bold pixel-button">
+            CLAIM VICTORY & SUMMARY <i class="fa-solid fa-award ml-2"></i>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- SCREEN 6: VICTORY -->
+    <section id="screen-victory" class="hidden space-y-6">
+      <div class="text-center space-y-2">
+        <span class="font-pixel text-xs text-amber-400 uppercase tracking-widest"><i class="fa-solid fa-star"></i> QUEST COMPLETE - LEVEL 4 DISCOVERY ACHIEVED <i class="fa-solid fa-star"></i></span>
+        <h2 class="text-2xl sm:text-3xl font-extrabold font-pixel text-white">NAITIK'S SELF-AWARENESS SUMMARY</h2>
+        <p class="text-xs sm:text-sm text-slate-300">GLS1O Unit 1 Summative Portfolio Deliverable</p>
+      </div>
+
+      <div class="bg-arcade-900 border-4 border-arcade-cyan p-6 sm:p-8 space-y-6 shadow-2xl">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 border-b-2 border-arcade-700 pb-4">
+          <div>
+            <span class="text-[10px] font-pixel text-arcade-neon uppercase">STUDENT NAME</span>
+            <h3 class="text-lg font-bold text-white">Naitik Babbar Verma</h3>
+            <p class="text-xs text-slate-400">Course: GLS1O • Self-Awareness Summative</p>
+          </div>
+          <div class="sm:text-right">
+            <span class="text-[10px] font-pixel text-emerald-400 uppercase">STATUS</span>
+            <div class="text-sm font-bold text-emerald-300 flex sm:justify-end items-center gap-2">
+              <i class="fa-solid fa-circle-check"></i> Ready for Evaluation
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+          <div class="p-4 bg-arcade-800 rounded border border-arcade-700 space-y-1">
+            <span class="font-pixel text-[10px] text-arcade-neon block">PERSONAL CHARACTERISTICS</span>
+            <p class="text-slate-200 font-semibold">Corny, cheesy, funny, kinda kind</p>
+          </div>
+          <div class="p-4 bg-arcade-800 rounded border border-arcade-700 space-y-1">
+            <span class="font-pixel text-[10px] text-arcade-neon block">INTERESTS & HOBBIES</span>
+            <p class="text-slate-200 font-semibold">Soccer, Movies (Breaking Bad is peak! 🔥), Cooking</p>
+          </div>
+          <div class="p-4 bg-arcade-800 rounded border border-arcade-700 space-y-1">
+            <span class="font-pixel text-[10px] text-arcade-neon block">LEARNING STYLES</span>
+            <p class="text-slate-200 font-semibold">Auditory & Kinesthetic (Same number tied for both)</p>
+          </div>
+          <div class="p-4 bg-arcade-800 rounded border border-arcade-700 space-y-1">
+            <span class="font-pixel text-[10px] text-arcade-neon block">MULTIPLE INTELLIGENCES</span>
+            <p class="text-slate-200 font-semibold">Body Smart (59%) & Sound Smart (53%)</p>
+          </div>
+
+          <div class="md:col-span-2 p-4 bg-arcade-800 rounded border border-arcade-700 space-y-2">
+            <span class="font-pixel text-[10px] text-arcade-neon block">CLASSROOM & LIFE STRATEGIES</span>
+            <p class="text-slate-300 leading-relaxed">
+              <strong>In School:</strong> Read notes out loud to study for tests, listen to recorded lessons, and use physical manipulatives/models in math & science to understand hard concepts instead of just sitting still and staring at a textbook.
+              <br><strong class="mt-1 block">Outside School:</strong> Learn new skills through hands-on practice and muscle memory, like playing soccer or trying out new cooking recipes.
+            </p>
+          </div>
+
+          <div class="md:col-span-2 p-4 bg-arcade-800 rounded border border-arcade-700 space-y-2">
+            <span class="font-pixel text-[10px] text-arcade-neon block">STRONGEST PROBLEM SOLVING SKILLS</span>
+            <ul class="list-disc list-inside text-slate-300 space-y-1">
+              <li><strong>Calm and Collected:</strong> I don't panic under much pressure or when things get stressful, which helps me think clearly and work through problems.</li>
+              <li><strong>Resourceful:</strong> I'm good at finding creative solutions and using whatever tools or information I have available to fix a problem or complete a task.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap items-center justify-between gap-4 pt-4 border-t-2 border-arcade-700">
+          <button onclick="openSelfEvalModal()" class="px-5 py-3 bg-sky-600 hover:bg-sky-500 text-white font-pixel text-xs pixel-button flex items-center gap-2">
+            <i class="fa-solid fa-clipboard-check"></i> VIEW RUBRIC & SUBMISSION STEPS
+          </button>
+          <button onclick="triggerWhiteFX(); resetGame();" class="px-4 py-3 bg-arcade-800 hover:bg-arcade-700 text-slate-300 font-pixel text-xs border border-arcade-600 rounded">
+            <i class="fa-solid fa-rotate-left"></i> REPLAY QUEST
+          </button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- RUBRIC MODAL -->
+  <div id="selfEvalModal" class="fixed inset-0 bg-arcade-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden" onclick="if (event.target === this) closeSelfEvalModal()">
+    <div class="bg-arcade-900 border-4 border-arcade-cyan max-w-6xl w-full max-h-[92vh] overflow-y-auto p-5 sm:p-8 space-y-5 relative shadow-2xl">
+      <button onclick="closeSelfEvalModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white font-pixel text-xs">[X] CLOSE</button>
+
+      <div class="border-b-2 border-arcade-700 pb-3 pr-24">
+        <span class="font-pixel text-[10px] text-arcade-neon uppercase">SELF-EVALUATION</span>
+        <h3 class="text-2xl font-bold font-pixel text-white mt-1">RUBRIC</h3>
+        <p class="text-xs sm:text-sm text-slate-300 mt-3 leading-relaxed">
+          Complete a self-evaluation by highlighting the levels you think you achieved on your project.
+          You must <u>evaluate all 3</u> Success Criteria by highlighting all of the expectations you believed you achieved under each level.
+          <span class="text-amber-300">(The highlighted boxes show the levels Naitik selected.)</span>
+        </p>
+      </div>
+
+      <div class="rub-wrap border-2 border-arcade-600">
+        <table class="rub-table">
+          <tr>
+            <td colspan="5" class="p-3 bg-arcade-800 text-xs text-slate-200">
+              <strong class="text-white">OLG 1:</strong> I am learning to be aware of and reflect on my own strengths, needs, and responsibilities.
+            </td>
+          </tr>
+
+          <tr>
+            <th class="text-left" style="width:16%">Criteria/Level</th>
+            <td class="lvl-cell">
+              <div class="grid grid-cols-4">
+                <button class="lvl-btn">4++</button>
+                <button class="lvl-btn">4+<small>(high)</small></button>
+                <button class="lvl-btn">4+<small>(low)</small></button>
+                <button class="lvl-btn">4<small>(high)</small></button>
+                <button class="lvl-btn">4<small>(low)</small></button>
+                <button class="lvl-btn">4-<small>(high)</small></button>
+                <button class="lvl-btn">4-<small>(low)</small></button>
+              </div>
+            </td>
+            <td class="lvl-cell">
+              <div class="grid grid-cols-3">
+                <button class="lvl-btn picked">3+</button>
+                <button class="lvl-btn">3</button>
+                <button class="lvl-btn">3-</button>
+              </div>
+            </td>
+            <td class="lvl-cell">
+              <div class="grid grid-cols-3">
+                <button class="lvl-btn">2+</button>
+                <button class="lvl-btn">2</button>
+                <button class="lvl-btn">2-</button>
+              </div>
+            </td>
+            <td class="lvl-cell">
+              <div class="grid grid-cols-3">
+                <button class="lvl-btn">1+</button>
+                <button class="lvl-btn">1</button>
+                <button class="lvl-btn">1-</button>
+              </div>
+            </td>
+          </tr>
+
+          <tr>
+            <th></th>
+            <th class="rub-head-exceeds">Exceeds Expectations</th>
+            <th class="rub-head-meets">Meets Expectations</th>
+            <th class="rub-head-prog">Progressing Towards Expectations</th>
+            <th class="rub-head-not">Not yet meeting all expectations</th>
+          </tr>
+
+          <tr>
+            <td class="rub-crit"><strong>Success Criteria 1:</strong><span>-I can self reflect on my own character traits and interests <strong class="text-white">in detail</strong></span></td>
+            <td class="rub-cell">
+              <p>-My media product demonstrates exceptional understanding of the content from our self awareness unit</p>
+              <p>-My media product is exceptionally clear, detailed and engaging</p>
+              <p>-My media product includes many examples of my character traits and interests</p>
+            </td>
+            <td class="rub-cell hl">
+              <p>-My media product demonstrates considerable understanding of the content from our self awareness unit</p>
+              <p>-My media product is clear, detailed and engaging</p>
+              <p>-My media product includes several examples of my character traits and interests</p>
+            </td>
+            <td class="rub-cell">
+              <p>-My media product demonstrates a growing understanding of the content from our self awareness unit</p>
+              <p>-My media product includes developing detail</p>
+              <p>-My media product includes some examples of my character traits and interests</p>
+            </td>
+            <td class="rub-cell">
+              <p>-My media product demonstrates a developing understanding of the content from our self awareness unit</p>
+              <p>-My media product includes limited detail</p>
+              <p>-My media product includes a limited number of examples of my character traits and interests</p>
+            </td>
+          </tr>
+
+          <tr>
+            <td class="rub-crit"><strong>Success Criteria 2:</strong><span>-I can <strong class="text-white">accurately</strong> identify my learning style multiple intelligences and problem solving strengths</span></td>
+            <td class="rub-cell"><p>-My media product identifies my learning style, multiple intelligences and problem solving strengths in exemplary depth and detail</p></td>
+            <td class="rub-cell hl"><p>-My media product identifies my learning style, multiple intelligences and problem solving strengths in considerable depth and detail</p></td>
+            <td class="rub-cell"><p>-My media product identifies my learning style, multiple intelligences and problem solving strengths in growing depth and detail</p></td>
+            <td class="rub-cell"><p>-My media product identifies my learning style, multiple intelligences and problem solving strengths in developing depth and detail</p></td>
+          </tr>
+
+          <tr>
+            <td class="rub-crit"><strong>Success Criteria 3:</strong><span>-I can <strong class="text-white">clearly</strong> describe and explain which learning strategies work best for me and how to utilize them to achieve success</span></td>
+            <td class="rub-cell"><p>-My media product clearly communicates how learning styles and multiple intelligences can help me achieve success</p></td>
+            <td class="rub-cell hl"><p>-My media product communicates how learning styles and multiple intelligences can help me achieve success with considerable clarity</p></td>
+            <td class="rub-cell"><p>-My media product communicates how learning styles and multiple intelligences can help me achieve success with growing clarity</p></td>
+            <td class="rub-cell"><p>-My media product communicates how learning styles and multiple intelligences can help me achieve success with developing clarity</p></td>
+          </tr>
+        </table>
+      </div>
+
+      <div class="p-4 bg-amber-950/60 border-2 border-amber-500/80 rounded text-xs text-amber-200 space-y-2">
+        <strong class="font-pixel text-[10px] text-amber-400 block"><i class="fa-solid fa-triangle-exclamation"></i> SUBMISSION CHECKLIST (PDSB):</strong>
+        <p>1. If sharing via Google Drive or Slide Deck link, set <strong>General Access</strong> to <strong>"Peel District School Board (PDSB)"</strong> and <strong>"Viewer"</strong>.</p>
+        <p>2. Paste your link onto the <strong>Submission Slide</strong> and in the <strong>Brightspace comments</strong>.</p>
+      </div>
+
+      <div class="flex justify-end pt-2">
+        <button onclick="closeSelfEvalModal()" class="px-5 py-2 bg-arcade-cyan text-arcade-950 font-pixel text-xs font-bold pixel-button">DONE</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+
+    let gameState = { xp: 0, level: 1, skillsUnlocked: 0, heroHP: 100, bossHP: 100, l3Round: 0, bossRound: 0 };
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !$('selfEvalModal').classList.contains('hidden')) closeSelfEvalModal();
+    });
+
+    /* ---------- Question data ---------- */
+    const l3Questions = [
+      {
+        text: "How does Naitik handle high-pressure stress during sudden classroom group project changes?",
+        options: [
+          { text: "Calm and Collected: Doesn't panic under pressure or stress, keeping a clear mind to work through problems.", correct: true },
+          { text: "Hot-tempered: Argues with group members and quits working.", correct: false },
+          { text: "Panicked: Freaks out immediately and deletes all project files.", correct: false }
+        ]
+      },
+      {
+        text: "What makes Naitik an effective problem solver when resources or instructions are limited?",
+        options: [
+          { text: "Giving up and waiting for someone else to do the work.", correct: false },
+          { text: "Resourceful: Good at finding creative solutions and using whatever tools or info are available to fix a problem.", correct: true },
+          { text: "Complaining that the task is impossible without trying.", correct: false }
+        ]
+      },
+      {
+        text: "How does Naitik combine his calmness and resourcefulness when encountering a tough assignment roadblock?",
+        options: [
+          { text: "Stays cool, gathers available study tools, and works through the issue step-by-step without stressing out.", correct: true },
+          { text: "Ignores the assignment completely until the last minute.", correct: false },
+          { text: "Stress-crams silently without asking for help or using resources.", correct: false }
+        ]
+      }
+    ];
+
+    const bossQuestions = [
+      {
+        text: "ROUND 1: The Overlord throws a sudden 1-hour project deadline emergency! Group members are panicking! How does Naitik strike back?",
+        options: [
+          { text: "Freak out, blame team members, and surrender to the stress.", correct: false },
+          { text: "Stay Calm & Collected (don't panic) and use Resourcefulness to find creative solutions with available tools.", correct: true },
+          { text: "Hide in the hallway until the period ends.", correct: false }
+        ]
+      },
+      {
+        text: "ROUND 2: The Overlord attacks with a hard Math & Science unit exam! How does Naitik utilize his Body Smart (59%) & Sound Smart (53%) intelligences?",
+        options: [
+          { text: "Stare silently at pages in complete isolation.", correct: false },
+          { text: "Read notes out loud, listen to audio recaps, and use hands-on physical models for hard concepts.", correct: true },
+          { text: "Binge watch Breaking Bad instead of studying.", correct: false }
+        ]
+      },
+      {
+        text: "ROUND 3: The Overlord attempts a confusion strike! How does Naitik apply his kinesthetic learning outside of school?",
+        options: [
+          { text: "Learn through hands-on practice & muscle memory, like practicing soccer drills or trying new cooking recipes.", correct: true },
+          { text: "Only read written recipe books without actually cooking.", correct: false },
+          { text: "Never practice soccer and expect to win games magically.", correct: false }
+        ]
+      },
+      {
+        text: "FINAL ROUND 4: The Overlord launches his final procrastination wave! What is Naitik's ultimate strategy to defeat him?",
+        options: [
+          { text: "Rely on Calmness under pressure and Resourceful problem-solving to break the project into daily action steps!", correct: true },
+          { text: "Delay the assignment until 11:59 PM and panic.", correct: false },
+          { text: "Abandon the project entirely.", correct: false }
+        ]
+      }
+    ];
+
+    /* ---------- Visual FX ---------- */
+    function flash(kind) {
+      const f = $('flash-screen');
+      f.classList.remove('flash-overlay-white', 'flash-overlay-red');
+      void f.offsetWidth;
+      f.classList.add(kind === 'red' ? 'flash-overlay-red' : 'flash-overlay-white');
+      const main = $('game-main');
+      main.classList.remove('screen-shake');
+      void main.offsetWidth;
+      main.classList.add('screen-shake');
+    }
+    function triggerWhiteFX() { flash('white'); }
+    function triggerRedPenaltyFX() { flash('red'); }
+
+    /* ---------- HUD & navigation ---------- */
+    function updateHUD() {
+      $('hud-level').innerText = gameState.level;
+      $('xp-bar').style.width = gameState.xp + '%';
+      $('xp-text').innerText = gameState.xp + '%';
+    }
+
+    function switchScreen(hideId, showId) {
+      $(hideId).classList.add('hidden');
+      $(showId).classList.remove('hidden');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function startQuest() {
+      triggerWhiteFX();
+      gameState.xp = 15;
+      updateHUD();
+      switchScreen('screen-start', 'screen-level1');
+    }
+
+    /* ---------- Level 1 ---------- */
+    function answerL1(isCorrect) {
+      if (isCorrect) {
+        triggerWhiteFX();
+        $('l1-question-box').classList.add('hidden');
+        $('l1-error').classList.add('hidden');
+        $('l1-feedback').classList.remove('hidden');
+        gameState.xp = 35;
+        updateHUD();
+      } else {
+        triggerRedPenaltyFX();
+        $('l1-question-box').classList.add('hidden');
+        $('l1-error').classList.remove('hidden');
+      }
+    }
+
+    function retryL1() {
+      triggerWhiteFX();
+      $('l1-error').classList.add('hidden');
+      $('l1-question-box').classList.remove('hidden');
+    }
+
+    function nextToLevel2() {
+      gameState.level = 2;
+      gameState.xp = 45;
+      updateHUD();
+      switchScreen('screen-level1', 'screen-level2');
+    }
+
+    /* ---------- Level 2 ---------- */
+    function unlockSkill(type) {
+      triggerWhiteFX();
+      const btn = $('btn-unlock-' + type);
+      if (btn.disabled) return;
+      btn.innerText = 'EQUIPPED!';
+      btn.disabled = true;
+      btn.classList.replace('bg-arcade-cyan', 'bg-emerald-500');
+      $('card-' + type).classList.replace('border-slate-700', 'border-emerald-500');
+
+      gameState.skillsUnlocked++;
+      $('skill-points').innerText = 2 - gameState.skillsUnlocked;
+
+      if (gameState.skillsUnlocked >= 2) {
+        $('l2-continue').classList.remove('hidden');
+        gameState.xp = 60;
+        updateHUD();
+      }
+    }
+
+    function nextToLevel3() {
+      gameState.level = 3;
+      gameState.xp = 70;
+      updateHUD();
+      switchScreen('screen-level2', 'screen-level3');
+      renderL3Question();
+    }
+
+    /* ---------- Question rendering ---------- */
+    function renderQuestion(q, textId, optsId, onAnswer) {
+      $(textId).textContent = q.text;
+      const optsContainer = $(optsId);
+      optsContainer.innerHTML = '';
+      q.options.forEach((opt) => {
+        const btn = document.createElement('button');
+        btn.className = 'p-3.5 bg-arcade-950 hover:bg-slate-800 border-2 border-arcade-cyan rounded text-left text-xs text-slate-200 transition-all font-medium';
+        btn.textContent = opt.text;
+        btn.onclick = () => onAnswer(opt.correct);
+        optsContainer.appendChild(btn);
+      });
+    }
+
+    /* ---------- Level 3 ---------- */
+    function renderL3Question() {
+      const r = gameState.l3Round;
+      $('l3-progress-text').innerText = 'QUESTION ' + (r + 1) + ' OF ' + l3Questions.length;
+      $('l3-q-num').innerText = 'SCENARIO ' + (r + 1);
+      renderQuestion(l3Questions[r], 'l3-q-text', 'l3-options', handleL3Answer);
+    }
+
+    function handleL3Answer(isCorrect) {
+      if (isCorrect) {
+        triggerWhiteFX();
+        gameState.l3Round++;
+        if (gameState.l3Round >= l3Questions.length) {
+          $('l3-q-container').classList.add('hidden');
+          $('l3-error').classList.add('hidden');
+          $('l3-feedback').classList.remove('hidden');
+          gameState.xp = 85;
+          updateHUD();
+        } else {
+          renderL3Question();
+        }
+      } else {
+        triggerRedPenaltyFX();
+        $('l3-q-container').classList.add('hidden');
+        $('l3-error').classList.remove('hidden');
+      }
+    }
+
+    function retryL3() {
+      triggerWhiteFX();
+      $('l3-error').classList.add('hidden');
+      $('l3-q-container').classList.remove('hidden');
+      renderL3Question();
+    }
+
+    function nextToBoss() {
+      gameState.level = 'BOSS';
+      updateHUD();
+      switchScreen('screen-level3', 'screen-boss');
+      renderBossQuestion();
+    }
+
+    /* ---------- Boss battle ---------- */
+    const DRAGON_ICON = '<i class="fa-solid fa-dragon"></i>';
+    const TROPHY_ICON = '<i class="fa-solid fa-trophy animate-bounce"></i>';
+
+    function setHeroHP(hp) {
+      const bar = $('hero-hp-bar');
+      const text = $('hero-hp-text');
+      bar.style.width = hp + '%';
+      text.innerText = hp + ' / 100 HP';
+      bar.classList.remove('bg-emerald-500', 'bg-amber-500', 'bg-red-500');
+      text.classList.remove('text-emerald-400', 'text-amber-400', 'text-red-400');
+      if (hp > 60) { bar.classList.add('bg-emerald-500'); text.classList.add('text-emerald-400'); }
+      else if (hp > 30) { bar.classList.add('bg-amber-500'); text.classList.add('text-amber-400'); }
+      else { bar.classList.add('bg-red-500'); text.classList.add('text-red-400'); }
+    }
+
+    function setBossHP(hp) {
+      $('boss-hp-bar').style.width = hp + '%';
+      $('boss-hp-text').innerText = hp + ' / 100 HP';
+    }
+
+    function resetBossSprite() {
+      const s = $('boss-sprite');
+      s.className = 'text-6xl sm:text-7xl text-red-500 transition-transform duration-200';
+      s.style.transform = '';
+      s.style.color = '';
+      s.innerHTML = DRAGON_ICON;
+      $('boss-name').innerText = 'PROCRASTINATION OVERLORD';
+    }
+
+    function renderBossQuestion() {
+      const r = gameState.bossRound;
+      $('boss-q-num').innerText = 'ROUND ' + (r + 1) + ' OF ' + bossQuestions.length;
+      renderQuestion(bossQuestions[r], 'boss-q-text', 'boss-options', handleBossAnswer);
+    }
+
+    function handleBossAnswer(isCorrect) {
+      const combatLog = $('combat-log');
+      const bossSprite = $('boss-sprite');
+
+      if (isCorrect) {
+        triggerWhiteFX();
+        gameState.bossHP = Math.max(0, gameState.bossHP - 25);
+        setBossHP(gameState.bossHP);
+
+        bossSprite.style.transform = 'scale(1.25)';
+        bossSprite.style.color = '#fbbf24';
+        setTimeout(() => { bossSprite.style.transform = ''; bossSprite.style.color = ''; }, 250);
+
+        combatLog.innerText = "DIRECT HIT! Naitik's strategy dealt 25 DMG to the Overlord!";
+        gameState.bossRound++;
+
+        if (gameState.bossRound >= bossQuestions.length || gameState.bossHP <= 0) {
+          setBossHP(0);
+          combatLog.innerText = 'VICTORY! Procrastination Overlord defeated! Level 4 Grade Unlocked!';
+          bossSprite.className = 'text-6xl sm:text-7xl text-emerald-400';
+          bossSprite.innerHTML = TROPHY_ICON;
+          $('boss-name').innerText = 'OVERLORD DEFEATED!';
+          $('boss-q-container').classList.add('hidden');
+          $('boss-victory-box').classList.remove('hidden');
+          gameState.xp = 100;
+          updateHUD();
+        } else {
+          renderBossQuestion();
+        }
+      } else {
+        triggerRedPenaltyFX();
+        gameState.heroHP = Math.max(0, gameState.heroHP - 35);
+        setHeroHP(gameState.heroHP);
+        combatLog.innerText = 'CRITICAL COUNTERATTACK! Wrong strategy! The Overlord hit you for -35 HP!';
+
+        if (gameState.heroHP <= 0) {
+          $('boss-q-container').classList.add('hidden');
+          $('boss-defeat-box').classList.remove('hidden');
+        }
+      }
+    }
+
+    function retryBossBattle() {
+      triggerWhiteFX();
+      gameState.heroHP = 100;
+      gameState.bossHP = 100;
+      gameState.bossRound = 0;
+      setHeroHP(100);
+      setBossHP(100);
+      $('combat-log').innerText = 'The Overlord attacks with high school stress! Answer questions to strike back!';
+      $('boss-defeat-box').classList.add('hidden');
+      $('boss-q-container').classList.remove('hidden');
+      renderBossQuestion();
+    }
+
+    function showVictoryScreen() {
+      gameState.level = 'MAX';
+      updateHUD();
+      switchScreen('screen-boss', 'screen-victory');
+    }
+
+    /* ---------- Rubric modal ---------- */
+    function openSelfEvalModal() { $('selfEvalModal').classList.remove('hidden'); }
+    function closeSelfEvalModal() { $('selfEvalModal').classList.add('hidden'); }
+
+    /* ---------- Reset ---------- */
+    function resetGame() {
+      gameState = { xp: 0, level: 1, skillsUnlocked: 0, heroHP: 100, bossHP: 100, l3Round: 0, bossRound: 0 };
+      updateHUD();
+
+      setHeroHP(100);
+      setBossHP(100);
+      resetBossSprite();
+      $('combat-log').innerText = 'The Overlord attacks with high school stress! You need 4 hits to defeat him!';
+
+      $('boss-q-container').classList.remove('hidden');
+      $('boss-victory-box').classList.add('hidden');
+      $('boss-defeat-box').classList.add('hidden');
+
+      $('l1-feedback').classList.add('hidden');
+      $('l1-error').classList.add('hidden');
+      $('l1-question-box').classList.remove('hidden');
+
+      $('l3-feedback').classList.add('hidden');
+      $('l3-error').classList.add('hidden');
+      $('l3-q-container').classList.remove('hidden');
+
+      $('l2-continue').classList.add('hidden');
+
+      ['body', 'sound'].forEach((type) => {
+        const btn = $('btn-unlock-' + type);
+        btn.innerText = 'EQUIP ABILITY';
+        btn.disabled = false;
+        btn.className = 'w-full py-2.5 bg-arcade-cyan text-arcade-950 font-pixel text-[10px] font-bold pixel-button';
+        $('card-' + type).classList.replace('border-emerald-500', 'border-slate-700');
+      });
+      $('skill-points').innerText = '2';
+
+      switchScreen('screen-victory', 'screen-start');
+    }
+
+    setHeroHP(100);
+  </script>
+</body>
+</html>
